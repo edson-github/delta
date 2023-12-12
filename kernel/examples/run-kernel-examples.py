@@ -78,7 +78,7 @@ def delete_if_exists(path):
     # if path exists, delete it.
     if os.path.exists(path):
         shutil.rmtree(path)
-        print("Deleted %s " % path)
+        print(f"Deleted {path} ")
 
 
 # pylint: disable=too-few-public-methods
@@ -103,7 +103,7 @@ def run_cmd(cmd, throw_on_error=True, env=None, stream_output=False, **kwargs):
         child = subprocess.Popen(cmd, env=cmd_env, **kwargs)
         exit_code = child.wait()
         if throw_on_error and exit_code != 0:
-            raise Exception("Non-zero exitcode: %s" % (exit_code))
+            raise Exception(f"Non-zero exitcode: {exit_code}")
         return exit_code
     else:
         child = subprocess.Popen(

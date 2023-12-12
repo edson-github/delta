@@ -29,18 +29,18 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # Clear any previous runs
-spark.sql("DROP TABLE IF EXISTS " + tableName)
+spark.sql(f"DROP TABLE IF EXISTS {tableName}")
 spark.sql("DROP TABLE IF EXISTS newData")
 
 try:
     # Create a table
     print("############# Creating a table ###############")
-    spark.sql("CREATE TABLE %s(id LONG) USING delta" % tableName)
-    spark.sql("INSERT INTO %s VALUES 0, 1, 2, 3, 4" % tableName)
+    spark.sql(f"CREATE TABLE {tableName}(id LONG) USING delta")
+    spark.sql(f"INSERT INTO {tableName} VALUES 0, 1, 2, 3, 4")
 
     # Read the table
     print("############ Reading the table ###############")
-    spark.sql("SELECT * FROM %s" % tableName).show()
+    spark.sql(f"SELECT * FROM {tableName}").show()
 
     # Upsert (merge) new data
     print("########### Upsert new data #############")
@@ -54,22 +54,24 @@ try:
             WHEN NOT MATCHED THEN INSERT *
         '''.format(tableName))
 
-    spark.sql("SELECT * FROM %s" % tableName).show()
+    spark.sql(f"SELECT * FROM {tableName}").show()
 
     # Update table data
     print("########## Overwrite the table ###########")
-    spark.sql("INSERT OVERWRITE %s select * FROM (VALUES 5, 6, 7, 8, 9) x (id)" % tableName)
-    spark.sql("SELECT * FROM %s" % tableName).show()
+    spark.sql(
+        f"INSERT OVERWRITE {tableName} select * FROM (VALUES 5, 6, 7, 8, 9) x (id)"
+    )
+    spark.sql(f"SELECT * FROM {tableName}").show()
 
     # Update every even value by adding 100 to it
     print("########### Update to the table(add 100 to every even value) ##############")
     spark.sql("UPDATE {0} SET id = (id + 100) WHERE (id % 2 == 0)".format(tableName))
-    spark.sql("SELECT * FROM %s" % tableName).show()
+    spark.sql(f"SELECT * FROM {tableName}").show()
 
     # Delete every even value
     print("######### Delete every even value ##############")
     spark.sql("DELETE FROM {0} WHERE (id % 2 == 0)".format(tableName))
-    spark.sql("SELECT * FROM %s" % tableName).show()
+    spark.sql(f"SELECT * FROM {tableName}").show()
 
     # Read old version of data using time travel
     print("######## Read old data using time travel ############")
@@ -78,6 +80,6 @@ try:
 
 finally:
     # cleanup
-    spark.sql("DROP TABLE " + tableName)
+    spark.sql(f"DROP TABLE {tableName}")
     spark.sql("DROP TABLE IF EXISTS newData")
     spark.stop()

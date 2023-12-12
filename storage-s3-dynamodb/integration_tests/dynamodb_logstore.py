@@ -81,12 +81,15 @@ dynamo_region = os.environ.get("DELTA_DYNAMO_REGION", "us-west-2")
 dynamo_error_rates = os.environ.get("DELTA_DYNAMO_ERROR_RATES", "")
 
 # ===== Optional input from user (we calculate defaults using RUN_ID) =====
-relative_delta_table_path = os.environ.get("RELATIVE_DELTA_TABLE_PATH", "tables/table_" + run_id)\
-    .rstrip("/")
-dynamo_table_name = os.environ.get("DELTA_DYNAMO_TABLE_NAME", "ddb_table_" + run_id)
+relative_delta_table_path = os.environ.get(
+    "RELATIVE_DELTA_TABLE_PATH", f"tables/table_{run_id}"
+).rstrip("/")
+dynamo_table_name = os.environ.get(
+    "DELTA_DYNAMO_TABLE_NAME", f"ddb_table_{run_id}"
+)
 
-delta_table_path = "s3a://" + s3_bucket + "/" + relative_delta_table_path
-relative_delta_log_path = relative_delta_table_path + "/_delta_log/"
+delta_table_path = f"s3a://{s3_bucket}/{relative_delta_table_path}"
+relative_delta_log_path = f"{relative_delta_table_path}/_delta_log/"
 
 if delta_table_path is None:
     print(f"\nSkipping Python test {os.path.basename(__file__)} due to the missing env variable "
@@ -158,7 +161,7 @@ def start_read_thread():
 
 
 print("===================== Starting reads and writes =====================")
-read_threads = [start_read_thread() for i in range(concurrent_readers)]
+read_threads = [start_read_thread() for _ in range(concurrent_readers)]
 pool = ThreadPool(concurrent_writers)
 start_t = time.time()
 pool.map(write_tx, range(num_rows))

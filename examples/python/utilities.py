@@ -58,11 +58,11 @@ deltaTable.generate("SYMLINK_FORMAT_MANIFEST")
 
 # SQL Vacuum
 print("####### SQL Vacuum #######")
-spark.sql("VACUUM '%s' RETAIN 169 HOURS" % "/tmp/delta-table").collect()
+spark.sql("VACUUM '/tmp/delta-table' RETAIN 169 HOURS").collect()
 
 # SQL describe history
 print("####### SQL Describe History ########")
-print(spark.sql("DESCRIBE HISTORY delta.`%s`" % ("/tmp/delta-table")).collect())
+print(spark.sql('DESCRIBE HISTORY delta.`/tmp/delta-table`').collect())
 
 # cleanup
 shutil.rmtree("/tmp/delta-table")

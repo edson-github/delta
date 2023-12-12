@@ -139,7 +139,13 @@ if __name__ == "__main__":
         if benchmark_name in benchmarks:
             run_single_benchmark(benchmark_name, benchmarks[benchmark_name], args)
         else:
-            raise Exception("Could not find benchmark spec for '" + benchmark_name + "'." +
-                            "Must provide one of the predefined benchmark names:\n" +
-                            "\n".join(benchmarks.keys()) +
-                            "\nSee this python file for more details.")
+            raise Exception(
+                (
+                    (
+                        f"Could not find benchmark spec for '{benchmark_name}'."
+                        + "Must provide one of the predefined benchmark names:\n"
+                    )
+                    + "\n".join(benchmarks.keys())
+                    + "\nSee this python file for more details."
+                )
+            )

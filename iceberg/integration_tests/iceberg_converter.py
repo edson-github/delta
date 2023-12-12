@@ -21,7 +21,7 @@ import shutil
 import random
 
 testRoot = "/tmp/delta-iceberg-converter/"
-warehousePath = testRoot + "iceberg_tables"
+warehousePath = f"{testRoot}iceberg_tables"
 shutil.rmtree(testRoot, ignore_errors=True)
 
 # we need to set the following configs
@@ -36,29 +36,32 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 table = "local.db.table"
-tablePath = "file://" + warehousePath + "/db/table"
+tablePath = f"file://{warehousePath}/db/table"
 
 try:
     print("Creating Iceberg table with partitions...")
     spark.sql(
-        "CREATE TABLE {} (id BIGINT, data STRING) USING ICEBERG PARTITIONED BY (data)".format(table))
-    spark.sql("INSERT INTO {} VALUES (1, 'a'), (2, 'b')".format(table))
-    spark.sql("INSERT INTO {} VALUES (3, 'c')".format(table))
+        f"CREATE TABLE {table} (id BIGINT, data STRING) USING ICEBERG PARTITIONED BY (data)"
+    )
+    spark.sql(f"INSERT INTO {table} VALUES (1, 'a'), (2, 'b')")
+    spark.sql(f"INSERT INTO {table} VALUES (3, 'c')")
 
     print("Converting Iceberg table to Delta table...")
-    spark.sql("CONVERT TO DELTA iceberg.`{}`".format(tablePath))
+    spark.sql(f"CONVERT TO DELTA iceberg.`{tablePath}`")
 
     print("Reading from converted Delta table...")
     spark.read.format("delta").load(tablePath).show()
 
     print("Modifying the converted table...")
-    spark.sql("INSERT INTO delta.`{}` VALUES (4, 'd')".format(tablePath))
+    spark.sql(f"INSERT INTO delta.`{tablePath}` VALUES (4, 'd')")
 
     print("Reading the final Delta table...")
     spark.read.format("delta").load(tablePath).show()
 
     print("Create an external catalog table using Delta...")
-    spark.sql("CREATE TABLE converted_delta_table USING delta LOCATION '{}'".format(tablePath))
+    spark.sql(
+        f"CREATE TABLE converted_delta_table USING delta LOCATION '{tablePath}'"
+    )
 
     print("Read from the catalog table...")
     spark.read.table("converted_delta_table").show()

@@ -57,9 +57,9 @@ def iceberg_jars_exists():
         results = glob.glob(lib_jar_abs_pattern)
 
         if len(results) > 1:
-            raise Exception("More jars than expected: " + str(results))
-        
-        if len(results) == 0:
+            raise Exception(f"More jars than expected: {results}")
+
+        if not results:
             return False
 
     return True
@@ -71,26 +71,27 @@ def prepare_iceberg_source():
         shutil.rmtree(iceberg_src_dir_name, ignore_errors=True)
 
         # We just want the shallowest, smallest iceberg clone. We will check out the commit later.
-        run_cmd("git clone --depth 1 --branch %s https://github.com/apache/iceberg.git %s" %
-                (iceberg_src_branch, iceberg_src_dir_name))
+        run_cmd(
+            f"git clone --depth 1 --branch {iceberg_src_branch} https://github.com/apache/iceberg.git {iceberg_src_dir_name}"
+        )
 
     with WorkingDirectory(iceberg_src_dir):
         run_cmd("git config user.email \"<>\"")
         run_cmd("git config user.name \"Anonymous\"")
 
         # Fetch just the single commit (shallow)
-        run_cmd("git fetch origin %s --depth 1" % iceberg_src_commit_hash)
-        run_cmd("git checkout %s" % iceberg_src_commit_hash)
+        run_cmd(f"git fetch origin {iceberg_src_commit_hash} --depth 1")
+        run_cmd(f"git checkout {iceberg_src_commit_hash}")
 
         print(">>> Applying patch files")
         patch_files = glob.glob(path.join(iceberg_patches_dir, "*.patch"))
         patch_files.sort()
 
         for patch_file in patch_files:
-            print(">>> Applying '%s'" % patch_file)
-            run_cmd("git apply %s" % patch_file)
+            print(f">>> Applying '{patch_file}'")
+            run_cmd(f"git apply {patch_file}")
             run_cmd("git add .")
-            run_cmd("git commit -a -m 'applied %s'" % path.basename(patch_file))
+            run_cmd(f"git commit -a -m 'applied {path.basename(patch_file)}'")
 
 
 def generate_iceberg_jars():
@@ -98,10 +99,10 @@ def generate_iceberg_jars():
     with WorkingDirectory(iceberg_src_dir):
         # disable style checks (can fail with patches) and tests
         build_args = "-x spotlessCheck -x checkstyleMain -x test -x integrationTest"
-        run_cmd("./gradlew :iceberg-core:build %s" % build_args)
-        run_cmd("./gradlew :iceberg-parquet:build %s" % build_args)
-        run_cmd("./gradlew :iceberg-hive-metastore:build %s" % build_args)
-        run_cmd("./gradlew :iceberg-data:build %s" % build_args)
+        run_cmd(f"./gradlew :iceberg-core:build {build_args}")
+        run_cmd(f"./gradlew :iceberg-parquet:build {build_args}")
+        run_cmd(f"./gradlew :iceberg-hive-metastore:build {build_args}")
+        run_cmd(f"./gradlew :iceberg-data:build {build_args}")
 
     print(">>> Copying JARs to lib directory")
     shutil.rmtree(iceberg_lib_dir, ignore_errors=True)
@@ -116,10 +117,10 @@ def generate_iceberg_jars():
         # Compiled jars will include tests, sources, javadocs; exclude them
         results = list(filter(lambda result: all(x not in result for x in ["tests.jar", "sources.jar", "javadoc.jar"]), results))
 
-        if len(results) == 0:
-            raise Exception("Could not find the jar: " + compled_jar_rel_glob_pattern)
+        if not results:
+            raise Exception(f"Could not find the jar: {compled_jar_rel_glob_pattern}")
         if len(results) > 1:
-            raise Exception("More jars created than expected: " + str(results))
+            raise Exception(f"More jars created than expected: {results}")
 
         # Copy the one jar result into the <iceberg root>/lib directory
         compiled_jar_abs_path = results[0]
@@ -142,7 +143,7 @@ def run_cmd(cmd, throw_on_error=True, env=None, stream_output=False, **kwargs):
         child = subprocess.Popen(cmd, env=cmd_env, **kwargs)
         exit_code = child.wait()
         if throw_on_error and exit_code != 0:
-            raise Exception("Non-zero exitcode: %s" % (exit_code))
+            raise Exception(f"Non-zero exitcode: {exit_code}")
         print("----\n")
         return exit_code
     else:
