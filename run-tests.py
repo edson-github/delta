@@ -53,21 +53,16 @@ def run_sbt_tests(root_dir, test_group, coverage, scala_version=None):
     sbt_path = path.join(root_dir, path.join("build", "sbt"))
     cmd = [sbt_path, "clean"]
 
-    test_cmd = "test"
-
-    if test_group:
-        # if test group is specified, then run tests only on that test group
-        test_cmd = "{}Group/test".format(test_group)
-
+    test_cmd = f"{test_group}Group/test" if test_group else "test"
     if coverage:
         cmd += ["coverage"]
 
     if scala_version is None:
         # when no scala version is specified, run test with all scala versions
-        cmd += ["+ %s" % test_cmd]  # build/sbt ... "+ project/test" ...
+        cmd += [f"+ {test_cmd}"]
     else:
         # when no scala version is specified, run test with only the specified scala version
-        cmd += ["++ %s" % scala_version, test_cmd]  # build/sbt ... "++ 2.13.8" "project/test" ...
+        cmd += [f"++ {scala_version}", test_cmd]
 
     if is_running_spark_tests:
         cmd += ["unidoc"]
@@ -98,12 +93,12 @@ def run_cmd(cmd, throw_on_error=True, env=None, stream_output=False, **kwargs):
     cmd_env = os.environ.copy()
     if env:
         cmd_env.update(env)
-    print("Running command: " + str(cmd))
+    print(f"Running command: {str(cmd)}")
     if stream_output:
         child = subprocess.Popen(cmd, env=cmd_env, **kwargs)
         exit_code = child.wait()
         if throw_on_error and exit_code != 0:
-            raise Exception("Non-zero exitcode: %s" % (exit_code))
+            raise Exception(f"Non-zero exitcode: {exit_code}")
         return exit_code
     else:
         child = subprocess.Popen(
@@ -137,47 +132,49 @@ def pull_or_build_docker_image(root_dir):
     """
 
     dockerfile_path = os.path.join(root_dir, "Dockerfile")
-    _, out, _ = run_cmd("md5sum %s" % dockerfile_path)
+    _, out, _ = run_cmd(f"md5sum {dockerfile_path}")
     dockerfile_hash = out.strip().split(" ")[0].strip()
-    print("Dockerfile hash: %s" % dockerfile_hash)
+    print(f"Dockerfile hash: {dockerfile_hash}")
 
-    test_env_image_tag = "delta_test_env:%s" % dockerfile_hash
-    print("Test env image: %s" % test_env_image_tag)
+    test_env_image_tag = f"delta_test_env:{dockerfile_hash}"
+    print(f"Test env image: {test_env_image_tag}")
 
     docker_registry = os.getenv("DOCKER_REGISTRY")
-    print("Docker registry set as " + str(docker_registry))
+    print(f"Docker registry set as {str(docker_registry)}")
 
 
     def build_image():
         print("---\nBuilding image %s ..." % test_env_image_tag)
-        run_cmd("docker build --tag=%s %s" % (test_env_image_tag, root_dir))
-        print("Built image %s" % test_env_image_tag)
+        run_cmd(f"docker build --tag={test_env_image_tag} {root_dir}")
+        print(f"Built image {test_env_image_tag}")
 
     def pull_image(registry_image_tag):
         try:
             print("---\nPulling image %s ..." % registry_image_tag)
-            run_cmd("docker pull %s" % registry_image_tag)
-            run_cmd("docker tag %s %s" % (registry_image_tag, test_env_image_tag))
-            print("Pulling image %s succeeded" % registry_image_tag)
+            run_cmd(f"docker pull {registry_image_tag}")
+            run_cmd(f"docker tag {registry_image_tag} {test_env_image_tag}")
+            print(f"Pulling image {registry_image_tag} succeeded")
             return True
         except Exception as e:
-            print("Pulling image %s failed: %s" % (registry_image_tag, repr(e)))
+            print(f"Pulling image {registry_image_tag} failed: {repr(e)}")
             return False
 
     def push_image(registry_image_tag):
         try:
             print("---\nPushing image %s ..." % registry_image_tag)
-            run_cmd("docker tag %s %s" % (test_env_image_tag, registry_image_tag))
-            run_cmd("docker push %s" % registry_image_tag)
-            print("Pushing image %s succeeded" % registry_image_tag)
+            run_cmd(f"docker tag {test_env_image_tag} {registry_image_tag}")
+            run_cmd(f"docker push {registry_image_tag}")
+            print(f"Pushing image {registry_image_tag} succeeded")
             return True
         except Exception as e:
-            print("Pushing image %s failed: %s" % (registry_image_tag, repr(e)))
+            print(f"Pushing image {registry_image_tag} failed: {repr(e)}")
             return False
 
     if docker_registry is not None:
         print("Attempting to use the docker registry")
-        test_env_image_tag_with_registry = docker_registry + "/delta/" + test_env_image_tag
+        test_env_image_tag_with_registry = (
+            f"{docker_registry}/delta/{test_env_image_tag}"
+        )
         success = pull_image(test_env_image_tag_with_registry)
         if not success:
             build_image()
@@ -200,22 +197,20 @@ def run_tests_in_docker(image_tag, test_group):
     envs = "-e JENKINS_URL -e SBT_1_5_5_MIRROR_JAR_URL "
     scala_version = os.getenv("SCALA_VERSION")
     if scala_version is not None:
-        envs = envs + "-e SCALA_VERSION=%s " % scala_version
+        envs += f"-e SCALA_VERSION={scala_version} "
 
     test_parallelism = os.getenv("TEST_PARALLELISM_COUNT")
     if test_parallelism is not None:
-        envs = envs + "-e TEST_PARALLELISM_COUNT=%s " % test_parallelism
+        envs += f"-e TEST_PARALLELISM_COUNT={test_parallelism} "
 
     cwd = os.getcwd()
     test_script = os.path.basename(__file__)
 
     test_script_args = ""
     if test_group:
-        test_script_args += " --group %s" % test_group
+        test_script_args += f" --group {test_group}"
 
-    test_run_cmd = "docker run --rm  -v %s:%s -w %s %s %s ./%s %s" % (
-        cwd, cwd, cwd, envs, image_tag, test_script, test_script_args
-    )
+    test_run_cmd = f"docker run --rm  -v {cwd}:{cwd} -w {cwd} {envs} {image_tag} ./{test_script} {test_script_args}"
     run_cmd(test_run_cmd, stream_output=True)
 
 

@@ -547,32 +547,28 @@ class DeltaTableTestsMixin:
     def test_convertToDelta(self) -> None:
         df = self.spark.createDataFrame([('a', 1), ('b', 2), ('c', 3)], ["key", "value"])
         df.write.format("parquet").save(self.tempFile)
-        dt = DeltaTable.convertToDelta(self.spark, "parquet.`%s`" % self.tempFile)
+        dt = DeltaTable.convertToDelta(self.spark, f"parquet.`{self.tempFile}`")
         self.__checkAnswer(
             self.spark.read.format("delta").load(self.tempFile),
             [('a', 1), ('b', 2), ('c', 3)])
 
         # test if convert to delta with partition columns work
-        tempFile2 = self.tempFile + "_2"
+        tempFile2 = f"{self.tempFile}_2"
         df.write.partitionBy("value").format("parquet").save(tempFile2)
         schema = StructType()
         schema.add("value", IntegerType(), True)
-        dt = DeltaTable.convertToDelta(
-            self.spark,
-            "parquet.`%s`" % tempFile2,
-            schema)
+        dt = DeltaTable.convertToDelta(self.spark, f"parquet.`{tempFile2}`", schema)
         self.__checkAnswer(
             self.spark.read.format("delta").load(tempFile2),
             [('a', 1), ('b', 2), ('c', 3)])
         self.assertEqual(type(dt), type(DeltaTable.forPath(self.spark, tempFile2)))
 
         # convert to delta with partition column provided as a string
-        tempFile3 = self.tempFile + "_3"
+        tempFile3 = f"{self.tempFile}_3"
         df.write.partitionBy("value").format("parquet").save(tempFile3)
         dt = DeltaTable.convertToDelta(
-            self.spark,
-            "parquet.`%s`" % tempFile3,
-            "value int")
+            self.spark, f"parquet.`{tempFile3}`", "value int"
+        )
         self.__checkAnswer(
             self.spark.read.format("delta").load(tempFile3),
             [('a', 1), ('b', 2), ('c', 3)])
@@ -581,7 +577,7 @@ class DeltaTableTestsMixin:
     def test_isDeltaTable(self) -> None:
         df = self.spark.createDataFrame([('a', 1), ('b', 2), ('c', 3)], ["key", "value"])
         df.write.format("parquet").save(self.tempFile)
-        tempFile2 = self.tempFile + '_2'
+        tempFile2 = f'{self.tempFile}_2'
         df.write.format("delta").save(tempFile2)
         self.assertEqual(DeltaTable.isDeltaTable(self.spark, self.tempFile), False)
         self.assertEqual(DeltaTable.isDeltaTable(self.spark, tempFile2), True)
@@ -601,18 +597,13 @@ class DeltaTableTestsMixin:
                 metadata["comment"] = comments[col]
             fields.append(StructField(col, dataType, col in nullables, metadata))
         self.assertEqual(StructType(fields), schema)
-        if len(properties) > 0:
-            result = (
-                self.spark.sql(  # type: ignore[assignment, misc]
-                    "SHOW TBLPROPERTIES {}".format(tableName)
-                )
-                .collect())
+        if properties:
+            result = self.spark.sql(f"SHOW TBLPROPERTIES {tableName}").collect()
             tablePropertyMap = {row.key: row.value for row in result}
             for key in properties:
                 self.assertIn(key, tablePropertyMap)
                 self.assertEqual(tablePropertyMap[key], properties[key])
-        tableDetails = self.spark.sql("DESCRIBE DETAIL {}".format(tableName))\
-            .collect()[0]
+        tableDetails = self.spark.sql(f"DESCRIBE DETAIL {tableName}").collect()[0]
         self.assertEqual(tableDetails.format, "delta")
         actualComment = tableDetails.description
         self.assertEqual(actualComment, tblComment)
@@ -725,7 +716,7 @@ class DeltaTableTestsMixin:
 
     def test_create_table_with_name_only(self) -> None:
         for ifNotExists in (False, True):
-            tableName = "testTable{}".format(ifNotExists)
+            tableName = f"testTable{ifNotExists}"
             with self.table(tableName):
                 deltaTable = self.__create_table(ifNotExists, tableName=tableName)
 
@@ -746,21 +737,23 @@ class DeltaTableTestsMixin:
             path = self.tempFile + str(ifNotExists)
             deltaTable = self.__create_table(ifNotExists, location=path)
 
-            self.__verify_table_schema("delta.`{}`".format(path),
-                                       deltaTable.toDF().schema,
-                                       ["col1", "col2"],
-                                       [IntegerType(), IntegerType()],
-                                       nullables={"col2"},
-                                       comments={"col1": "foo"},
-                                       partitioningColumns=["col1"],
-                                       tblComment="comment")
+            self.__verify_table_schema(
+                f"delta.`{path}`",
+                deltaTable.toDF().schema,
+                ["col1", "col2"],
+                [IntegerType(), IntegerType()],
+                nullables={"col2"},
+                comments={"col1": "foo"},
+                partitioningColumns=["col1"],
+                tblComment="comment",
+            )
             # verify generated columns.
-            self.__verify_generated_column("delta.`{}`".format(path), deltaTable)
+            self.__verify_generated_column(f"delta.`{path}`", deltaTable)
 
     def test_create_table_with_name_and_location(self) -> None:
         for ifNotExists in (False, True):
             path = self.tempFile + str(ifNotExists)
-            tableName = "testTable{}".format(ifNotExists)
+            tableName = f"testTable{ifNotExists}"
             with self.table(tableName):
                 deltaTable = self.__create_table(
                     ifNotExists, tableName=tableName, location=path)
@@ -798,9 +791,9 @@ class DeltaTableTestsMixin:
 
     def test_replace_table_with_name_only(self) -> None:
         for orCreate in (False, True):
-            tableName = "testTable{}".format(orCreate)
+            tableName = f"testTable{orCreate}"
             with self.table(tableName):
-                self.spark.sql("CREATE TABLE {} (c1 int) USING DELTA".format(tableName))
+                self.spark.sql(f"CREATE TABLE {tableName} (c1 int) USING DELTA")
                 deltaTable = self.__replace_table(orCreate, tableName=tableName)
 
                 self.__verify_table_schema(tableName,
@@ -821,25 +814,28 @@ class DeltaTableTestsMixin:
             self.__create_table(False, location=path)
             deltaTable = self.__replace_table(orCreate, location=path)
 
-            self.__verify_table_schema("delta.`{}`".format(path),
-                                       deltaTable.toDF().schema,
-                                       ["col1", "col2"],
-                                       [IntegerType(), IntegerType()],
-                                       nullables={"col2"},
-                                       comments={"col1": "foo"},
-                                       properties={"foo": "bar"},
-                                       partitioningColumns=["col1"],
-                                       tblComment="comment")
+            self.__verify_table_schema(
+                f"delta.`{path}`",
+                deltaTable.toDF().schema,
+                ["col1", "col2"],
+                [IntegerType(), IntegerType()],
+                nullables={"col2"},
+                comments={"col1": "foo"},
+                properties={"foo": "bar"},
+                partitioningColumns=["col1"],
+                tblComment="comment",
+            )
             # verify generated columns.
-            self.__verify_generated_column("delta.`{}`".format(path), deltaTable)
+            self.__verify_generated_column(f"delta.`{path}`", deltaTable)
 
     def test_replace_table_with_name_and_location(self) -> None:
         for orCreate in (False, True):
             path = self.tempFile + str(orCreate)
-            tableName = "testTable{}".format(orCreate)
+            tableName = f"testTable{orCreate}"
             with self.table(tableName):
-                self.spark.sql("CREATE TABLE {} (col int) USING DELTA LOCATION '{}'"
-                               .format(tableName, path))
+                self.spark.sql(
+                    f"CREATE TABLE {tableName} (col int) USING DELTA LOCATION '{path}'"
+                )
                 deltaTable = self.__replace_table(
                     orCreate, tableName=tableName, location=path)
 
@@ -1116,15 +1112,23 @@ class DeltaTableTestsMixin:
 
     def test_optimize_zorder_by(self) -> None:
         # write an unoptimized delta table
-        self.spark.createDataFrame([i for i in range(0, 100)], IntegerType()) \
-            .withColumn("col1", floor(col("value") % 7)) \
-            .withColumn("col2", floor(col("value") % 27)) \
-            .withColumn("p", floor(col("value") % 10)) \
-            .repartition(4).write.partitionBy("p").format("delta").save(self.tempFile)
+        self.spark.createDataFrame(list(range(0, 100)), IntegerType()).withColumn(
+            "col1", floor(col("value") % 7)
+        ).withColumn("col2", floor(col("value") % 27)).withColumn(
+            "p", floor(col("value") % 10)
+        ).repartition(
+            4
+        ).write.partitionBy(
+            "p"
+        ).format(
+            "delta"
+        ).save(
+            self.tempFile
+        )
 
         # get the number of data files in the current version
         numDataFilesPreZOrder = self.spark.read.format("delta").load(self.tempFile) \
-            .select("_metadata.file_path").distinct().count()
+                .select("_metadata.file_path").distinct().count()
 
         # create DeltaTable
         dt = DeltaTable.forPath(self.spark, self.tempFile)
@@ -1149,23 +1153,27 @@ class DeltaTableTestsMixin:
         # negative test: Z-Order on partition column
         def optimize() -> None:
             dt.optimize().where("p = 1").executeZOrderBy(["p"])
+
         self.__intercept(optimize,
                          "p is a partition column. "
                          "Z-Ordering can only be performed on data columns")
 
     def test_optimize_zorder_by_w_partition_filter(self) -> None:
         # write an unoptimized delta table
-        df = self.spark.createDataFrame([i for i in range(0, 100)], IntegerType()) \
-            .withColumn("col1", floor(col("value") % 7)) \
-            .withColumn("col2", floor(col("value") % 27)) \
-            .withColumn("p", floor(col("value") % 10)) \
-            .repartition(4).write.partitionBy("p")
+        df = (
+            self.spark.createDataFrame(list(range(0, 100)), IntegerType())
+            .withColumn("col1", floor(col("value") % 7))
+            .withColumn("col2", floor(col("value") % 27))
+            .withColumn("p", floor(col("value") % 10))
+            .repartition(4)
+            .write.partitionBy("p")
+        )
 
         df.format("delta").save(self.tempFile)
 
         # get the number of data files in the current version in partition p = 2
         numDataFilesPreZOrder = self.spark.read.format("delta").load(self.tempFile) \
-            .filter("p=2").select("_metadata.file_path").distinct().count()
+                .filter("p=2").select("_metadata.file_path").distinct().count()
 
         # create DeltaTable
         dt = DeltaTable.forPath(self.spark, self.tempFile)
@@ -1237,7 +1245,9 @@ class DeltaTableTestsMixin:
         except Exception as e:
             if exceptionMsg in str(e):
                 seenTheRightException = True
-        assert seenTheRightException, ("Did not catch expected Exception:" + exceptionMsg)
+        assert (
+            seenTheRightException
+        ), f"Did not catch expected Exception:{exceptionMsg}"
 
 
 class DeltaTableTests(DeltaTableTestsMixin, DeltaTestCase):

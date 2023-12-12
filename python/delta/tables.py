@@ -573,11 +573,13 @@ class DeltaTable(object):
         """
         jdt = self._jdt
         if not isinstance(readerVersion, int):
-            raise ValueError("The readerVersion needs to be an integer but got '%s'." %
-                             type(readerVersion))
+            raise ValueError(
+                f"The readerVersion needs to be an integer but got '{type(readerVersion)}'."
+            )
         if not isinstance(writerVersion, int):
-            raise ValueError("The writerVersion needs to be an integer but got '%s'." %
-                             type(writerVersion))
+            raise ValueError(
+                f"The writerVersion needs to be an integer but got '{type(writerVersion)}'."
+            )
         jdt.upgradeTableProtocol(readerVersion, writerVersion)
 
     @since(1.2)  # type: ignore[arg-type]
@@ -647,12 +649,12 @@ class DeltaTable(object):
     @staticmethod  # type: ignore[arg-type]
     def _verify_type_str(variable: str, name: str) -> None:
         if not isinstance(variable, str) or variable is None:
-            raise ValueError("%s needs to be a string but got '%s'." % (name, type(variable)))
+            raise ValueError(f"{name} needs to be a string but got '{type(variable)}'.")
 
     @staticmethod  # type: ignore[arg-type]
     def _verify_type_int(variable: int, name: str) -> None:
         if not isinstance(variable, int) or variable is None:
-            raise ValueError("%s needs to be an int but got '%s'." % (name, type(variable)))
+            raise ValueError(f"{name} needs to be an int but got '{type(variable)}'.")
 
     @staticmethod
     def _dict_to_jmap(
@@ -665,9 +667,9 @@ class DeltaTable(object):
         """
         # Get the Java map for pydict
         if pydict is None:
-            raise ValueError("%s cannot be None" % argname)
+            raise ValueError(f"{argname} cannot be None")
         elif type(pydict) is not dict:
-            e = "%s must be a dict, found to be %s" % (argname, str(type(pydict)))
+            e = f"{argname} must be a dict, found to be {str(type(pydict))}"
             raise TypeError(e)
 
         jvm: "JVMView" = sparkSession._sc._jvm  # type: ignore[attr-defined]
@@ -675,17 +677,20 @@ class DeltaTable(object):
         jmap: "JavaMap" = jvm.java.util.HashMap()
         for col, expr in pydict.items():
             if type(col) is not str:
-                e = ("Keys of dict in %s must contain only strings with column names" % argname) + \
-                    (", found '%s' of type '%s" % (str(col), str(type(col))))
+                e = (
+                    f"Keys of dict in {argname} must contain only strings with column names"
+                    + f", found '{str(col)}' of type '{str(type(col))}"
+                )
                 raise TypeError(e)
             if type(expr) is Column:
                 jmap.put(col, expr._jc)
             elif type(expr) is str:
                 jmap.put(col, functions.expr(expr)._jc)
             else:
-                e = ("Values of dict in %s must contain only Spark SQL Columns " % argname) + \
-                    "or strings (expressions in SQL syntax) as values, " + \
-                    ("found '%s' of type '%s'" % (str(expr), str(type(expr))))
+                e = (
+                    f"Values of dict in {argname} must contain only Spark SQL Columns or strings (expressions in SQL syntax) as values, "
+                    + f"found '{str(expr)}' of type '{str(type(expr))}'"
+                )
                 raise TypeError(e)
         return jmap
 
@@ -700,8 +705,10 @@ class DeltaTable(object):
         elif type(condition) is str:
             jcondition = functions.expr(condition)._jc
         else:
-            e = ("%s must be a Spark SQL Column or a string (expression in SQL syntax)" % argname) \
-                + ", found to be of type %s" % str(type(condition))
+            e = (
+                f"{argname} must be a Spark SQL Column or a string (expression in SQL syntax)"
+                + f", found to be of type {str(type(condition))}"
+            )
             raise TypeError(e)
         return jcondition
 
@@ -1092,7 +1099,7 @@ class DeltaTableBuilder(object):
     def _raise_type_error(self, msg: str, objs: Iterable[Any]) -> NoReturn:
         errorMsg = msg
         for obj in objs:
-            errorMsg += " Found %s with type %s" % ((str(obj)), str(type(obj)))
+            errorMsg += f" Found {str(obj)} with type {str(type(obj))}"
         raise TypeError(errorMsg)
 
     @since(1.0)  # type: ignore[arg-type]
@@ -1357,7 +1364,7 @@ class DeltaOptimizeBuilder(object):
         for c in cols:
             if type(c) is not str:
                 errorMsg = "Z-order column must be str. "
-                errorMsg += "Found %s with type %s" % ((str(c)), str(type(c)))
+                errorMsg += f"Found {str(c)} with type {str(type(c))}"
                 raise TypeError(errorMsg)
 
         return DataFrame(

@@ -35,14 +35,18 @@ def test(root_dir, package):
 
     for test_file in test_files:
         try:
-            cmd = ["spark-submit",
-                   "--driver-class-path=%s" % extra_class_path,
-                   "--packages", package, test_file]
+            cmd = [
+                "spark-submit",
+                f"--driver-class-path={extra_class_path}",
+                "--packages",
+                package,
+                test_file,
+            ]
             print("Running tests in %s\n=============" % test_file)
-            print("Command: %s" % str(cmd))
+            print(f"Command: {cmd}")
             run_cmd(cmd, stream_output=True)
         except:
-            print("Failed tests in %s" % (test_file))
+            print(f"Failed tests in {test_file}")
             raise
 
 
@@ -50,7 +54,7 @@ def delete_if_exists(path):
     # if path exists, delete it.
     if os.path.exists(path):
         shutil.rmtree(path)
-        print("Deleted %s " % path)
+        print(f"Deleted {path} ")
 
 
 def prepare(root_dir):
@@ -65,8 +69,7 @@ def prepare(root_dir):
     version = '0.0.0'
     with open(os.path.join(root_dir, "version.sbt")) as fd:
         version = fd.readline().split('"')[1]
-    package = "io.delta:delta-spark_2.12:" + version
-    return package
+    return f"io.delta:delta-spark_2.12:{version}"
 
 
 def run_cmd(cmd, throw_on_error=True, env=None, stream_output=False, print_cmd=True, **kwargs):
@@ -81,7 +84,7 @@ def run_cmd(cmd, throw_on_error=True, env=None, stream_output=False, print_cmd=T
         child = subprocess.Popen(cmd, env=cmd_env, **kwargs)
         exit_code = child.wait()
         if throw_on_error and exit_code != 0:
-            raise Exception("Non-zero exitcode: %s" % (exit_code))
+            raise Exception(f"Non-zero exitcode: {exit_code}")
         return exit_code
     else:
         child = subprocess.Popen(
@@ -149,7 +152,7 @@ def run_pypi_packaging_tests(root_dir):
 
     # we need, for example, 1.1.0_SNAPSHOT not 1.1.0-SNAPSHOT
     version_formatted = version.replace("-", "_")
-    delta_whl_name = "delta_spark-" + version_formatted + "-py3-none-any.whl"
+    delta_whl_name = f"delta_spark-{version_formatted}-py3-none-any.whl"
 
     # this will install delta-spark-$version
     install_whl_cmd = ["pip3", "install", path.join(wheel_dist_dir, delta_whl_name)]
@@ -162,7 +165,7 @@ def run_pypi_packaging_tests(root_dir):
         print("### Starting tests...")
         run_cmd(test_cmd, stream_output=True)
     except:
-        print("Failed pip installation tests in %s" % (test_file))
+        print(f"Failed pip installation tests in {test_file}")
         raise
 
 
